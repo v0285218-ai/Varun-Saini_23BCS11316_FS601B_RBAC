@@ -1,80 +1,64 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { Box, Paper, TextField, Button, Typography, Switch, FormControlLabel } from '@mui/material';
+import DarkLayout from '../components/DarkLayout';
 import http from '../api/http';
 import { useNavigate, useParams } from 'react-router-dom';
-import Layout from '../components/Layout';
-import {
-  Box, Button, Checkbox, FormControlLabel, Paper, Stack, TextField, Typography, Alert
-} from '@mui/material';
-import SaveIcon from '@mui/icons-material/Save';
+import { useAuth } from '../auth/AuthContext';
 
 export default function PostEditor() {
   const { id } = useParams();
-  const isNew = id === 'new';
-  const [form, setForm] = useState({ title: '', body: '', published: false });
-  const [err, setErr] = useState('');
   const nav = useNavigate();
+  const { user } = useAuth();
+  const [post, setPost] = useState(null);
 
   useEffect(() => {
-    if (!isNew) {
-      http.get('/posts')
-        .then(({ data }) => {
-          const p = data.find(x => x._id === id);
-          if (p) setForm(p);
-        })
-        .catch(() => setErr('Failed to load post'));
-    }
-  }, [id, isNew]);
+    const load = async () => {
+      try {
+        const { data } = await http.get(`/posts`);
+        const found = data.find(p => p._id === id);
+        setPost(found || null);
+      } catch (err) {
+        alert('Failed to load');
+      }
+    };
+    load();
+  }, [id]);
+
+  if (!post) return (
+    <DarkLayout>
+      <Typography>Loading...</Typography>
+    </DarkLayout>
+  );
+
+  const canEdit = user?.role === 'ADMIN' || (user?.role === 'EDITOR' && String(post.authorId) === String(user.id));
 
   const save = async () => {
+    if (!canEdit) return alert('Not allowed');
     try {
-      if (isNew) await http.post('/posts', form);
-      else await http.patch(`/posts/${id}`, form);
+      await http.patch(`/posts/${id}`, { title: post.title, body: post.body, published: post.published });
       nav('/');
-    } catch (e) {
-      setErr('Save failed');
+    } catch (err) {
+      alert(err?.response?.data?.error || 'Failed');
     }
   };
 
   return (
-    <Layout>
-      <Box sx={{ maxWidth: 600, mx: 'auto', mt: 4 }}>
-        <Paper sx={{ p: 4 }}>
-          <Typography variant="h5" gutterBottom>
-            {isNew ? 'Create Post' : 'Edit Post'}
-          </Typography>
+    <DarkLayout>
+      <Box sx={{ maxWidth: 800 }}>
+        <Button variant="outlined" sx={{ mb: 2 }} onClick={() => nav(-1)}>← Back</Button>
+        <Paper sx={{ p: 3 }}>
+          <Typography variant="h5" sx={{ mb: 2 }}>Edit Post</Typography>
 
-          {err && <Alert severity="error" sx={{ mb: 2 }}>{err}</Alert>}
+          <TextField fullWidth label="Title" sx={{ mb: 2 }} value={post.title} onChange={e => setPost({ ...post, title: e.target.value })} />
+          <TextField fullWidth label="Body" multiline rows={8} sx={{ mb: 2 }} value={post.body} onChange={e => setPost({ ...post, body: e.target.value })} />
+          <FormControlLabel control={<Switch checked={!!post.published} onChange={e => setPost({ ...post, published: e.target.checked })} />} label="Published" />
 
-          <Stack spacing={2}>
-            <TextField
-              label="Title"
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
-              fullWidth
-            />
-            <TextField
-              label="Body"
-              multiline
-              rows={6}
-              value={form.body}
-              onChange={(e) => setForm({ ...form, body: e.target.value })}
-              fullWidth
-            />
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={form.published}
-                  onChange={(e) => setForm({ ...form, published: e.target.checked })}
-                />
-              }
-              label="Published"
-            />
-            <Button variant="contained" startIcon={<SaveIcon />} onClick={save}>
-              Save
-            </Button>
-          </Stack>
+          <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+            <Button variant="contained" onClick={save} disabled={!canEdit}>Save</Button>
+            <Button variant="outlined" onClick={() => nav(-1)}>Cancel</Button>
+          </Box>
         </Paper>
       </Box>
-    </Layout>
+    </DarkLayout>
   );
 }

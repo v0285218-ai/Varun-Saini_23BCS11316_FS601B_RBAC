@@ -1,22 +1,22 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import http from '../api/http';
+import DarkLayout from '../components/DarkLayout';
+import PostCard from '../components/PostCard';
 import Can from '../components/Can';
-import Layout from '../components/Layout';
-import { Link as RouterLink } from 'react-router-dom';
-import {
-  Alert, Grid, Card, CardContent, CardActions, Button, Typography, Chip, Skeleton, Stack
-} from '@mui/material';
+import { Grid, Stack, Button, Typography, Skeleton } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import { Link as RouterLink } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext';
 
 export default function Posts() {
   const [items, setItems] = useState(null);
   const [err, setErr] = useState('');
+  const { user } = useAuth();
 
   const load = async () => {
     try {
       const { data } = await http.get('/posts');
+      // server returns posts with authorId; keep as-is (we'll show authorId short)
       setItems(data);
     } catch (e) {
       setErr('Failed to load posts');
@@ -31,61 +31,52 @@ export default function Posts() {
     load();
   };
 
-  return (
-    <Layout>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-        <Typography variant="h5">Posts</Typography>
+  const canEditFor = (post) => {
+    if (!user) return false;
+    if (user.role === 'ADMIN') return true;
+    if (user.role === 'EDITOR') return String(post.authorId) === String(user.id) || post.published; // editors can edit own OR published? adjust as needed
+    return false;
+  };
 
+  const canDeleteFor = (post) => {
+    if (!user) return false;
+    if (user.role === 'ADMIN') return true;
+    return false;
+  };
+
+  return (
+    <DarkLayout>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
+        <Typography variant="h4">All Posts</Typography>
         <Can do="posts:create">
-          <Button variant="contained" startIcon={<AddIcon />} component={RouterLink} to="/posts/new">
-            New Post
-          </Button>
+          <Button variant="contained" startIcon={<AddIcon />} component={RouterLink} to="/posts/new">New Post</Button>
         </Can>
       </Stack>
 
-      {err && <Alert severity="error" sx={{ mb: 2 }}>{err}</Alert>}
+      {err && <Typography color="error">{err}</Typography>}
 
       {!items ? (
-        <Grid container spacing={2}>
-          {[1,2,3].map(x => (
-            <Grid item xs={12} md={6} key={x}>
-              <Skeleton variant="rounded" height={130} />
+        <Grid container spacing={3}>
+          {[1,2,3,4].map(i => (
+            <Grid item xs={12} md={6} lg={4} key={i}>
+              <Skeleton variant="rounded" height={150} />
             </Grid>
           ))}
         </Grid>
       ) : (
-        <Grid container spacing={2}>
+        <Grid container spacing={3}>
           {items.map(p => (
-            <Grid item xs={12} md={6} key={p._id}>
-              <Card>
-                <CardContent>
-                  <Stack direction="row" alignItems="center" spacing={1}>
-                    <Typography variant="h6" sx={{ flexGrow: 1 }}>{p.title}</Typography>
-                    {p.published && <Chip label="Published" size="small" color="success" />}
-                  </Stack>
-                  <Typography variant="body2" sx={{ mt: 1, opacity:0.8 }}>
-                    {p.body}
-                  </Typography>
-                </CardContent>
-
-                <CardActions>
-                  <Can do="posts:update">
-                    <Button component={RouterLink} to={`/posts/${p._id}`} size="small" startIcon={<EditIcon />}>
-                      Edit
-                    </Button>
-                  </Can>
-
-                  <Can do="posts:delete">
-                    <Button onClick={() => remove(p._id)} size="small" color="error" startIcon={<DeleteOutlineIcon />}>
-                      Delete
-                    </Button>
-                  </Can>
-                </CardActions>
-              </Card>
+            <Grid item xs={12} md={6} lg={4} key={p._id}>
+              <PostCard
+                post={{ ...p, authorName: p.authorName || (p.authorId?.name || `User`) }}
+                onDelete={remove}
+                canEdit={canEditFor(p)}
+                canDelete={canDeleteFor(p)}
+              />
             </Grid>
           ))}
         </Grid>
       )}
-    </Layout>
+    </DarkLayout>
   );
 }

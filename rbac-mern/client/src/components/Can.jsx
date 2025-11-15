@@ -6,7 +6,7 @@ const MATRIX = {
   VIEWER: ['posts:read']
 };
 
-export default function Can({ do: perm, children, fallback=null }) {
+export default function Can({ do: perm, children, fallback = null }) {
   const { user } = useAuth();
   if (!user) return null;
   const allowed = MATRIX[user.role]?.includes(perm);

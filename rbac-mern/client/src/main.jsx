@@ -3,26 +3,18 @@ import ReactDOM from 'react-dom/client';
 import { RouterProvider } from 'react-router-dom';
 import { router } from './router';
 import AuthProvider from './auth/AuthContext';
-
-// MUI setup
-import { createTheme, ThemeProvider, CssBaseline } from '@mui/material';
-
-const theme = createTheme({
-  palette: {
-    mode: 'light',
-    primary: { main: '#1976d2' },
-    secondary: { main: '#9c27b0' },
-  },
-  shape: { borderRadius: 10 }
-});
+import { ThemeModeProvider } from './ThemeContext';
+import { AnimatePresence } from 'framer-motion';
+import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
+    <ThemeModeProvider>
       <AuthProvider>
-        <RouterProvider router={router} />
+        <AnimatePresence mode="wait">
+          <RouterProvider router={router} />
+        </AnimatePresence>
       </AuthProvider>
-    </ThemeProvider>
+    </ThemeModeProvider>
   </React.StrictMode>
 );

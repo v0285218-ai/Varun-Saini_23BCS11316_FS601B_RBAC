@@ -1,0 +1,11 @@
+html, body, #root {
+  height: 100%;
+}
+body {
+  background-color: #0b0f14;
+  background-image:
+    radial-gradient(circle at 10% 10%, rgba(124,77,255,0.03), transparent 5%),
+    radial-gradient(circle at 90% 90%, rgba(0,229,255,0.02), transparent 6%);
+  font-family: Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+a { text-decoration: none; color: inherit; }
